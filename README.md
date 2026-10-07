@@ -532,12 +532,33 @@ be ERC-3643; the `AtomicDvP` asset leg is plain `IERC20` so such tokens work
 unchanged, and their compliance checks propagate (an ineligible buyer reverts
 both legs).
 
-Cross-chain, the preference order is a trust-minimisation ladder: **IBC
-light-client channels first** (each chain verifies the other's consensus;
-relayers can delay but never forge, and no attestation committee joins the
-trust base), then venue synchronizers (Canton-style, when the counter-venue
-mandates one), then attested messaging (Chainlink CRE-style), then HTLCs last.
-Same-ledger DvP is the only unconditional rung; every cross-chain claim of
+Cross-chain, the token should exist on another chain only as **the same
+instrument natively issued there**: burned on one chain and minted on the
+other, never wrapped around a locked token. This repo implements no
+cross-chain path; the position is:
+
+- **Default: attested burn-and-mint with two independent keys.** Every mint
+  needs a strict majority of the operator's attesters **and** the issuer's own
+  key. Each signer reads the source chain from nodes it runs itself, and signs
+  only after source-chain finality.
+- **Tokens are locked, not burned, until the destination mint is proven.** A
+  mint that never happens unlocks at the source after a deadline, with proof
+  that the destination can no longer mint it.
+- **Losses are bounded where tokens are minted.** Each chain has a supply cap
+  and an inbound mint rate limit per corridor, and the home side refuses any
+  mint beyond what was finally burned elsewhere. Limits on outgoing transfers
+  alone do not stop a forged inbound message.
+- **Light-client channels (IBC-style)** replace attester trust for a corridor
+  once that light client has been audited. Each chain then verifies the
+  other's consensus, and relayers can delay but not forge.
+- **Venue synchronizers** (Canton-style) apply where a counter-venue requires
+  one.
+- **Third-party message networks** carry messages and never authorize them.
+  A network that lets the issuer require its own verifier on every message is
+  acceptable; one whose own attestation authorizes the mint is not.
+- **HTLCs** are the last resort.
+
+Same-ledger DvP is the only unconditional rung. Every cross-chain claim of
 atomicity should name the trust assumption it stands on.
 
 ## On-chain versus messaging: what actually changes
@@ -665,3 +686,15 @@ system with its invariants pinned by tests.
 - **A 24×7 token redeems into banking-hours money**: `defund` promises fiat and
   Fedwire closes. Redemption windows or an intraday facility are a policy
   choice the contracts do not make.
+- **Legal classification is unresolved.** The settlement token is a claim on
+  a pooled central-bank balance, not a deposit at a bank.
+  - The GENIUS Act's definition of a payment stablecoin excludes "a deposit
+    … including a deposit recorded using distributed ledger technology"
+    ([Pub. L. 119-27 §2(22)](https://www.govinfo.gov/content/pkg/PLAW-119publ27/html/PLAW-119publ27.htm)).
+    This token is not obviously such a deposit.
+  - The FDIC's April 2026 tokenized-deposit proposal asks whether a token that
+    *represents* a claim on a deposit, rather than being the deposit, could be
+    a stablecoin instead.
+  - So it is open whether the token falls outside the stablecoin definition
+    or its issuer must be a permitted payment-stablecoin issuer. That needs a
+    legal opinion before any pilot.

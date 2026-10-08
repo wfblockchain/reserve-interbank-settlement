@@ -8,7 +8,9 @@ netting optimiser and an economics simulator that measures, rather than asserts,
 what the design is worth.
 
 Self-contained: no proprietary dependencies, no external services. Solidity via
-Foundry, Go with a pure-stdlib module.
+Foundry; Go for the netting optimiser, the economics simulator, and a member
+bank's payment hub that drives the contracts end to end
+([services/payments-svc](services/payments-svc/README.md)).
 
 ---
 
@@ -482,6 +484,33 @@ governance — separate operators, separate auditors, production hardening,
 or an external adopter of one side — the directory boundary is where the
 repository splits.
 
+## The payment hub
+
+`services/payments-svc` is a member bank's payment hub over these contracts:
+go-kratos with proto-first APIs (HTTP and gRPC), Wire, Ent on Postgres, and
+moov-io for ISO 20022, OFAC screening, routing numbers and the Fed calendar.
+`services/payments-portal` is its web front end.
+
+Corporate clients send payment orders by API or pain.001 file and never see a
+token. An urgent payment to another bank is a **conversion** (the paying
+bank's deposit token burned, settlement money moved, the receiving bank's
+minted, in one transaction); a normal one is an **obligation** that settles
+net in the operator's next cycle, chosen through the **plan book** and
+re-verified by the engine. A bank's treasury funds settlement money over
+Fedwire or FedNow, draws **intraday liquidity** against collateral when it is
+short and Fedwire is shut, and defunds under maker-checker; the operator
+reconciles the Fed reserve account against the token's reserve pool and
+passes **reserve interest** through the accrual index.
+
+Its black-box end-to-end test runs a business week against anvil: netting,
+an OFAC block, a Saturday $25m payment released by an intraday draw, a
+closed account, funding and a defund, interest passed through pro rata, and
+reconciliation to the cent. A chaos suite (`make chaos` in the service) runs
+the same hub through lost RPC replies, failing receipts and reads, a locked
+database, concurrency and a crash, and checks that client money is conserved
+and the reserve account reconciles after every one. See
+[services/payments-svc/README.md](services/payments-svc/README.md).
+
 ## Layout
 
 | Path | What it is |
@@ -499,9 +528,14 @@ repository splits.
 | `contracts/src/market/TwapPolicy.sol` | n parts, one per window, front-loading impossible by clock arithmetic; per-part limit floor and fill window |
 | `contracts/src/clearing/DepositToken.sol` | One bank's M2: deposits in/out, customer gates, bank compliance, deposit interest via the accrual index — no backing invariant, by design |
 | `contracts/src/clearing/ConversionBridge.sol` | The two-tier seam: burn at A → settle A→B → mint at B, atomic, rate-free, triggered by the sending bank |
-| `contracts/test/` | 125 Foundry tests pinning the invariants, incl. audit regressions, the conversion seam, the derivatives layer, the urgent/intent/standing lanes, the liquidity pool's conservation and loss-bearing, the solver competition, third-party delivery, and the client-favoring rounding stance |
+| `contracts/src/clearing/ParticipantRegistry.sol` | Admission lists per policy: the operator governs members, each bank its own customers |
+| `contracts/src/demo/DemoTreasuryBill.sol` | Demo only: stands in for a tokenized T-bill posted to the intraday pool |
+| `contracts/test/` | 128 Foundry tests pinning the invariants, incl. audit regressions, the conversion seam, the derivatives layer, the urgent/intent/standing lanes, the liquidity pool's conservation and loss-bearing, the solver competition, third-party delivery, and the client-favoring rounding stance |
 | `internal/clearing/` | Multilateral netting + gridlock resolution (feasible, deterministic plans) and the economics simulation |
 | `cmd/clearing-operator/` | Prints the economics tables: efficiency and funding vs cycle size, accrual vs pool location |
+| `internal/network/` | Deploys and wires the contracts (roles as the Foundry tests grant them) and the operations a bank and the operator perform on them; tested against anvil |
+| `internal/{chain,fedwire,iso20022,anvil}` | Chain client bound to Foundry artifacts, the Fed simulator (Fedwire day, FedNow LMT, the reserve joint account), ISO 20022 messages, a local node |
+| `services/payments-svc/`, `services/payments-portal/` | The member bank's payment hub and its portals |
 
 ## Run it
 
@@ -509,11 +543,15 @@ repository splits.
 # Contracts (Foundry via Docker; or `forge test` if installed)
 cd contracts && docker run --rm -v "$PWD":/w -w /w ghcr.io/foundry-rs/foundry:stable "forge test"
 
-# Go: netting optimiser + simulation tests
-go test ./...
+# Go: netting optimiser, simulation, and the contract wiring against anvil
+ANVIL_BIN=$(command -v anvil) go test ./...
 
 # The economics tables
 go run ./cmd/clearing-operator
+
+# The payment hub and its black-box end-to-end test
+(cd services/payments-svc && make build-demo && ./bin/payments-svc -conf configs)
+(cd services/payments-svc && make e2e)
 ```
 
 Dependencies under `contracts/dependencies/` are soldeer-managed and not
@@ -658,8 +696,9 @@ system with its invariants pinned by tests.
 - **No default waterfall.** Deferred settlement creates payee credit exposure
   between submit and cycle; a reverted cycle protects the ledger, not the payee
   who waited. Production needs net debit caps and loss-sharing rules.
-- **Obligations do not expire**, and the operator can `forceGross` any queued
-  obligation — needs TTLs and a payer-revocation window.
+- **Obligations do not expire on chain**, and the operator can `forceGross`
+  any queued obligation — needs TTLs and a payer-revocation window. The
+  payment hub enforces a time-to-live off chain (it cancels and refunds).
 - **Plan-to-execution race:** balances can move between the optimiser's plan and
   `settleCycle`; the revert is atomic and safe, but production wants balance
   reservation.

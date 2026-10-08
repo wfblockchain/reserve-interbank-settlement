@@ -13,7 +13,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"tch-settlement-model/internal/clearing"
+	"reserve-interbank-settlement/internal/clearing"
 )
 
 const (

@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+package api.payments.v1;
+
+option go_package = "reserve-interbank-settlement/services/payments-svc/api/payments/v1;paymentsv1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "api/payments/v1/common.proto";
+
+// BankOperationsService is a member bank's operations console: sanctions
+// review (compliance), settlement money and its funding, intraday liquidity
+// (treasury), and defunds under maker-checker.
+service BankOperationsService {
+  // ListBankPayments lists the bank's clients' payments, with staff detail.
+  rpc ListBankPayments(ListBankPaymentsRequest) returns (ListBankPaymentsResponse) {
+    option (google.api.http) = { get: "/v1/ops/payments" };
+  }
+
+  // GetBankPayment returns one of the bank's clients' payments, with staff detail.
+  rpc GetBankPayment(GetBankPaymentRequest) returns (Payment) {
+    option (google.api.http) = { get: "/v1/ops/payments/{id}" };
+  }
+
+  // ListHolds lists payments held for sanctions review, and blocked or
+  // rejected cases with their OFAC report dates.
+  rpc ListHolds(ListHoldsRequest) returns (ListHoldsResponse) {
+    option (google.api.http) = { get: "/v1/ops/holds" };
+  }
+
+  // ReleaseHold clears a false positive; the payment proceeds.
+  rpc ReleaseHold(HoldDecisionRequest) returns (Payment) {
+    option (google.api.http) = { post: "/v1/ops/holds/{id}/release" body: "*" };
+  }
+
+  // BlockHold: a sanctioned party has an interest in the funds. They move to
+  // the bank's blocked account (BLCK) and a report is due to OFAC within 10
+  // business days (31 CFR 501.603).
+  rpc BlockHold(HoldDecisionRequest) returns (Payment) {
+    option (google.api.http) = { post: "/v1/ops/holds/{id}/block" body: "*" };
+  }
+
+  // RejectHold: prohibited, but no sanctioned party has an interest. Nothing
+  // moves (RR04); reported within 10 business days (31 CFR 501.604).
+  rpc RejectHold(HoldDecisionRequest) returns (Payment) {
+    option (google.api.http) = { post: "/v1/ops/holds/{id}/reject" body: "*" };
+  }
+
+  // GetLiquidity returns the bank's settlement money, intraday draws,
+  // alerts, payments waiting for liquidity and defunds.
+  rpc GetLiquidity(GetLiquidityRequest) returns (Liquidity) {
+    option (google.api.http) = { get: "/v1/ops/liquidity" };
+  }
+
+  // FundSettlement sends reserves into the reserve account and the operator
+  // issues settlement money against them: Fedwire BTRC while Fedwire is open,
+  // FedNow LMT1 while it is closed.
+  rpc FundSettlement(FundSettlementRequest) returns (FundSettlementResponse) {
+    option (google.api.http) = { post: "/v1/ops/funding" body: "*" };
+  }
+
+  // DrawIntraday borrows settlement money from the intraday pool against
+  // collateral at the pool's advance rate; payments waiting for liquidity
+  // then proceed.
+  rpc DrawIntraday(DrawIntradayRequest) returns (DrawIntradayResponse) {
+    option (google.api.http) = { post: "/v1/ops/intraday-draws" body: "*" };
+  }
+
+  // RepayIntraday repays a draw with its interest; the collateral returns.
+  rpc RepayIntraday(RepayIntradayRequest) returns (IntradayDraw) {
+    option (google.api.http) = { post: "/v1/ops/intraday-draws/{id}/repay" body: "*" };
+  }
+
+  // RequestDefund asks for settlement money back to the master account as
+  // reserves (maker); the amount is earmarked at once.
+  rpc RequestDefund(RequestDefundRequest) returns (Defund) {
+    option (google.api.http) = { post: "/v1/ops/defunds" body: "*" };
+  }
+
+  // ApproveDefund is the checker; never the requester, always the same bank.
+  rpc ApproveDefund(ApproveDefundRequest) returns (Defund) {
+    option (google.api.http) = { post: "/v1/ops/defunds/{id}/approve" body: "*" };
+  }
+}
+
+message ListBankPaymentsRequest {
+  string status = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListBankPaymentsResponse {
+  repeated Payment payments = 1;
+  string next_page_token = 2;
+}
+
+message GetBankPaymentRequest {
+  string id = 1;
+}
+
+message ListHoldsRequest {}
+
+message ListHoldsResponse {
+  repeated Payment holds = 1;
+  repeated Payment cases = 2;
+}
+
+message HoldDecisionRequest {
+  string id = 1;
+  string note = 2;
+}
+
+message GetLiquidityRequest {}
+
+message Alert {
+  string id = 1;
+  string kind = 2; // LIQUIDITY | LOW_WATERMARK
+  string message = 3;
+  bool open = 4;
+  google.protobuf.Timestamp at = 5;
+}
+
+message Defund {
+  string id = 1;
+  Money amount = 2;
+  string requested_by = 3;
+  string approved_by = 4;
+  string status = 5; // AWAITING_APPROVAL | APPROVED | COMPLETED | FAILED
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message IntradayDraw {
+  string id = 1;
+  Money principal = 2;
+  Money collateral = 3;     // posted, at par
+  int32 rate_bps = 4;       // annualized, fixed at the draw
+  google.protobuf.Timestamp opened_at = 5;
+  Money interest = 6;       // owed now while open; paid once repaid
+  bool overdue = 7;         // past the pool's operational day
+  bool open = 8;
+}
+
+message Liquidity {
+  string bank_id = 1;
+  string bank_name = 2;
+  string deposit_token = 3;
+  Money settlement = 4;
+  Money earmarked = 5;
+  Money available = 6;
+  Money deposits = 7;
+  Money intraday = 8;
+  Money collateral = 9;     // unposted
+  Money accrual_owed = 10;
+  Money accrual_paid = 11;
+  Money low_watermark = 12;
+  Money normal_watermark = 13;
+  bool fedwire_open = 14;
+  google.protobuf.Timestamp next_fedwire_open = 15;
+  string funding_instrument = 16;
+  repeated Payment awaiting_liquidity = 17;
+  repeated Alert alerts = 18;
+  repeated Defund defunds = 19;
+  repeated IntradayDraw draws = 20;
+  Money pool_available = 21; // the pool's cash on hand
+}
+
+message FundSettlementRequest {
+  Money amount = 1;
+}
+
+message FundSettlementResponse {
+  string instrument = 1; // BTRC | LMT1
+  string status = 2;     // the Fed's pacs.002 status
+  string reason = 3;
+  int32 payments_released = 4;
+}
+
+message DrawIntradayRequest {
+  Money amount = 1;
+}
+
+message DrawIntradayResponse {
+  IntradayDraw draw = 1;
+  int32 payments_released = 2;
+}
+
+message RepayIntradayRequest {
+  string id = 1;
+}
+
+message RequestDefundRequest {
+  Money amount = 1;
+}
+
+message ApproveDefundRequest {
+  string id = 1;
+}

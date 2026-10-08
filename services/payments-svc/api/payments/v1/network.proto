@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package api.payments.v1;
+
+option go_package = "reserve-interbank-settlement/services/payments-svc/api/payments/v1;paymentsv1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "api/payments/v1/common.proto";
+
+// NetworkOperationsService is the operator's console: members' settlement
+// money, the Fed reserve account against the token's reserve pool, the
+// intraday pool, netting cycles, reconciliation and reserve interest.
+service NetworkOperationsService {
+  // GetNetwork returns members, the reserve account, the pool, cycles,
+  // reconciliations and interest distributions.
+  rpc GetNetwork(GetNetworkRequest) returns (Network) {
+    option (google.api.http) = { get: "/v1/operator/network" };
+  }
+  // RunNettingCycle plans the largest feasible set of queued obligations
+  // and settles it through the plan book now.
+  rpc RunNettingCycle(RunNettingCycleRequest) returns (NettingCycle) {
+    option (google.api.http) = { post: "/v1/operator/netting-cycles" body: "*" };
+  }
+  // Reconcile attests the Fed's camt.052 balance for the reserve account
+  // against the token's reserve pool.
+  rpc Reconcile(ReconcileRequest) returns (Reconciliation) {
+    option (google.api.http) = { post: "/v1/operator/reconciliations" body: "*" };
+  }
+  // DistributeInterest passes interest the Fed paid on the reserve account
+  // to holders of settlement money through the accrual index, and pays each
+  // member over Fedwire (412 while Fedwire is closed).
+  rpc DistributeInterest(DistributeInterestRequest) returns (InterestDistribution) {
+    option (google.api.http) = { post: "/v1/operator/interest-distributions" body: "*" };
+  }
+  // SetClock moves the scenario clock (and the chain's) forward. Demo builds
+  // only; a production build answers PERMISSION_DENIED.
+  rpc SetClock(SetClockRequest) returns (SetClockResponse) {
+    option (google.api.http) = { post: "/v1/operator/clock" body: "*" };
+  }
+}
+
+message GetNetworkRequest {}
+
+// Member is a bank's standing in settlement money.
+message Member {
+  string id = 1;
+  string name = 2;
+  string deposit_token = 3;
+  Money settlement = 4;      // settlement money held
+  Money earmarked = 5;       // frozen for defunds
+  Money available = 6;       // usable for conversions and netting
+  Money deposits = 7;        // tokenized deposits outstanding
+  Money intraday = 8;        // drawn from the intraday pool
+  Money accrual_owed = 9;    // reserve interest accrued, unpaid
+  Money accrual_paid = 10;   // reserve interest paid to date
+  bool admitted = 11;
+}
+
+message IntradayPool {
+  Money assets = 1;
+  Money drawn = 2;
+  int32 utilization_bps = 3;
+}
+
+message NettingCycle {
+  string id = 1;
+  string cycle_ref = 2;
+  google.protobuf.Timestamp at = 3;
+  string trigger = 4; // scheduled | run by <name>
+  int32 discharged = 5;
+  int32 deferred = 6;
+  Money gross = 7;
+  Money net = 8;
+}
+
+message Reconciliation {
+  string id = 1;
+  google.protobuf.Timestamp at = 2;
+  Money fed_balance = 3;   // the reserve account, from the Fed's camt.052
+  Money reserve_pool = 4;  // what the settlement token records
+  bool reconciliation_break = 5;
+  bool invariants_hold = 6; // supply == reserve pool
+}
+
+message InterestDistribution {
+  string id = 1;
+  google.protobuf.Timestamp at = 2;
+  string run_by = 3;
+  Money amount = 4;               // credited by the Fed
+  Money paid = 5;                 // paid to members
+  Money retained = 6;             // sub-cent remainders left with the operator
+  map<string, Money> shares = 7;  // by member id
+}
+
+message Network {
+  google.protobuf.Timestamp now = 1;
+  bool fedwire_open = 2;
+  google.protobuf.Timestamp next_fedwire_open = 3;
+  Money fed_reserve_account = 4;
+  Money reserve_pool = 5;
+  bool reconciliation_break = 6;
+  bool invariants_hold = 7;
+  repeated Member members = 8;
+  int32 obligations_queued = 9;
+  google.protobuf.Timestamp next_scheduled_cycle = 10;
+  repeated NettingCycle cycles = 11;
+  repeated Reconciliation reconciliations = 12;
+  IntradayPool intraday_pool = 13;
+  int32 netting_efficiency_bps = 14; // gross discharged over net moved, all time
+  repeated InterestDistribution interest_distributions = 15;
+}
+
+message RunNettingCycleRequest {}
+message ReconcileRequest {}
+
+message DistributeInterestRequest {
+  Money amount = 1;
+}
+
+message SetClockRequest {
+  google.protobuf.Timestamp time = 1;
+}
+
+message SetClockResponse {
+  google.protobuf.Timestamp now = 1;
+}

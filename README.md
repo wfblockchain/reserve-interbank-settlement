@@ -21,8 +21,8 @@ A transferable claim gets a market; a market prices the claim in real time. So
 
 - **Transferable deposit tokens (M2)** give every issuing bank stablecoin-like
   run dynamics. The moment Bank C's token prints 98.4¢ in stress, everyone sees
-  it and everyone exits first — a live price feed on each bank's credit is a run
-  accelerant by design.
+  it and everyone exits first — a live price feed on each bank's credit can
+  accelerate a run.
 - **A transferable pool claim (M0)** has no single-bank credit to run on. A
   market in it prices nothing bank-specific; the residual risks — the operator
   and the account structure — are governed, not market-priced.
@@ -643,21 +643,23 @@ each claim above reduces to a checkable test, which is how the question
 
 ## Position among adjacent projects
 
-The tokenized-money landscape is rich, and each major project has proven a
-piece of this architecture in production. Stated factually — what each
-demonstrates, and what it leaves out of scope:
+The tokenized-money landscape is rich, and the major projects in it have
+proven, in production or in official-sector trials, the building blocks this
+reference model depends on. Each made design choices suited to its own
+mandate, participants and regulators; the table records what each has
+demonstrated and how this model draws on it, not a ranking.
 
-| Project | What it demonstrates | Out of its scope |
+| Project | What it has demonstrated | How this model relates |
 |---|---|---|
-| **Fnality** | The M0 anchor: settlement in central-bank funds via an omnibus account (GBP live) | The deposit tier, conversion, obligation netting, FX pricing, elasticity |
-| **Partior** | A live multi-currency interbank ledger | Settles in commercial-bank money — credit inside the core; no netting engine; JV rather than mutual governance |
-| **Kinexys / single-bank token services** | Intraday tokenized repo and intra-bank tokenized money at real scale | Interbank settlement between competing issuers — a single bank's token cannot be neutral infrastructure for its rivals |
-| **Payment stablecoins** | 24×7 corridor payments at low cost | Bank-grade governance; obligation netting; and yield to holders, which the applicable statutes prohibit for them and permit for a bank settlement asset |
-| **Regulated Liability Network (UK)** | Multi-bank liabilities recorded on one ledger, with central-bank participation | The elasticity layer, explicitly; still in experimentation |
-| **Project Agorá** | Official-sector blessing for tokenized deposits + reserves on a unified ledger, multi-currency, real-value trials | FX price discovery; netting; official-sector timelines apply |
-| **DeFi lending/lease protocols** | Single-sided pools, utilization pricing, collateralized leases, partial liquidation — mechanics this repo ports | A regulated monetary instrument for those mechanics to act on |
+| **Fnality** | Settlement in central-bank funds via an omnibus account at the central bank (GBP live) | The M0 anchor this model assumes; the deposit tier, netting and FX layers here are explored on top of that kind of anchor |
+| **Partior** | A live multi-currency interbank ledger operated by its founding banks | Shows multi-bank, multi-currency settlement working at scale; this model studies the same problem with a central-bank-money settlement tier and an on-chain netting engine |
+| **Kinexys and bank token services** | Intraday tokenized repo and tokenized deposit payments at real scale | Shows tokenized deposits and intraday liquidity working in production; this model studies settlement between several issuers' tokens through a shared, neutral layer |
+| **Payment stablecoins** | 24×7 corridor payments at low cost | Out of their scope: bank-grade governance; obligation netting; and yield to holders, which the applicable statutes prohibit for them and permit for a bank settlement asset |
+| **Regulated Liability Network (UK)** | Multi-bank liabilities recorded on one ledger, with central-bank participation | A close conceptual neighbour in experimentation; this model adds an elasticity layer as one possible extension |
+| **Project Agorá** | A central-bank and private-sector exploration of tokenized deposits and reserves on a unified ledger, multi-currency, with real-value trials | Close in spirit; this model explores FX price discovery and netting as additional components in that setting |
+| **DeFi lending/lease protocols** | Single-sided pools, utilization pricing, collateralized leases, partial liquidation | Mechanics this repo ports and applies to a regulated monetary instrument |
 
-What this reference model contributes that none of the above combines:
+What this reference model explores, as a composition of those building blocks:
 
 1. **The transferability inversion, implemented.** The settlement tier is the
    transferable instrument; the deposit tier is constrained by construction
@@ -666,27 +668,25 @@ What this reference model contributes that none of the above combines:
    so no secondary market in bank credit can form.
 2. **Netting as a first-class mode.** An obligation engine whose cycles are
    recomputed and verified on-chain — the largest liquidity lever in
-   clearing, absent from every token project above.
+   clearing.
 3. **A named, ordered elasticity stack** with a fully-backed invariant at
    every layer, and the fractional alternative rejected on explicit
    theoretical grounds rather than left unexamined.
 4. **Conversion pricing inside the settlement machine.** A sealed-bid,
    uniform-price residual auction whose fill order the chain verifies —
-   settlement and price discovery in one atomic system, where adjacent
-   projects settle FX that was priced elsewhere.
+   settlement and price discovery in one atomic system.
 5. **A credit-neutral operator whose powers are verified, not trusted.** The
    operator cannot quote, trade, reorder or omit; every discretionary
    surface is either removed or checked on-chain.
 6. **Falsifiability.** Measured economics from a runnable simulator, 49
    pinning tests, and a limits section that says what is design versus code.
 
-The honest counterweight: the projects above have production volumes,
-licenses and central-bank relationships; this is a reference model. The
-claim is not deployment maturity — it is design completeness. Each adjacent
-project validates a component of this architecture in production; this
-repository is, to our knowledge, the only public codebase that composes the
-components — money design, market design, elasticity, governance — into one
-system with its invariants pinned by tests.
+The projects above have production volumes, licenses, central-bank
+relationships and operating experience; this is a reference model. It makes
+no claim to deployment maturity. Its purpose is to show, with invariants
+pinned by tests, how components those projects have validated could compose
+into one system — money design, market design, elasticity, governance — and
+it is offered as a complement to that work, not an alternative to it.
 
 ## Known limits, stated plainly
 

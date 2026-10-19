@@ -646,18 +646,7 @@ each claim above reduces to a checkable test, which is how the question
 The tokenized-money landscape is rich, and the major projects in it have
 proven, in production or in official-sector trials, the building blocks this
 reference model depends on. Each made design choices suited to its own
-mandate, participants and regulators; the table records what each has
-demonstrated and how this model draws on it, not a ranking.
-
-| Project | What it has demonstrated | How this model relates |
-|---|---|---|
-| **Fnality** | Settlement in central-bank funds via an omnibus account at the central bank (GBP live) | The M0 anchor this model assumes; the deposit tier, netting and FX layers here are explored on top of that kind of anchor |
-| **Partior** | A live multi-currency interbank ledger operated by its founding banks | Shows multi-bank, multi-currency settlement working at scale; this model studies the same problem with a central-bank-money settlement tier and an on-chain netting engine |
-| **Kinexys and bank token services** | Intraday tokenized repo and tokenized deposit payments at real scale | Shows tokenized deposits and intraday liquidity working in production; this model studies settlement between several issuers' tokens through a shared, neutral layer |
-| **Payment stablecoins** | 24×7 corridor payments at low cost | Out of their scope: bank-grade governance; obligation netting; and yield to holders, which the applicable statutes prohibit for them and permit for a bank settlement asset |
-| **Regulated Liability Network (UK)** | Multi-bank liabilities recorded on one ledger, with central-bank participation | A close conceptual neighbour in experimentation; this model adds an elasticity layer as one possible extension |
-| **Project Agorá** | A central-bank and private-sector exploration of tokenized deposits and reserves on a unified ledger, multi-currency, with real-value trials | Close in spirit; this model explores FX price discovery and netting as additional components in that setting |
-| **DeFi lending/lease protocols** | Single-sided pools, utilization pricing, collateralized leases, partial liquidation | Mechanics this repo ports and applies to a regulated monetary instrument |
+mandate, participants and regulators.
 
 What this reference model explores, as a composition of those building blocks:
 

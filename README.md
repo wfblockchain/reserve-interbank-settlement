@@ -715,14 +715,13 @@ it is offered as a complement to that work, not an alternative to it.
   Fedwire closes. Redemption windows or an intraday facility are a policy
   choice the contracts do not make.
 - **Legal classification is unresolved.** The settlement token is a claim on
-  a pooled central-bank balance, not a deposit at a bank.
-  - The GENIUS Act's definition of a payment stablecoin excludes "a deposit
-    … including a deposit recorded using distributed ledger technology"
-    ([Pub. L. 119-27 §2(22)](https://www.govinfo.gov/content/pkg/PLAW-119publ27/html/PLAW-119publ27.htm)).
-    This token is not obviously such a deposit.
-  - The FDIC's April 2026 tokenized-deposit proposal asks whether a token that
-    *represents* a claim on a deposit, rather than being the deposit, could be
-    a stablecoin instead.
-  - So it is open whether the token falls outside the stablecoin definition
-    or its issuer must be a permitted payment-stablecoin issuer. That needs a
-    legal opinion before any pilot.
+  a pooled central-bank balance, not a deposit at a bank. The GENIUS Act's
+  definition of a payment stablecoin excludes "a deposit … including a deposit
+  recorded using distributed ledger technology"
+  ([Pub. L. 119-27 §2(22)](https://www.govinfo.gov/content/pkg/PLAW-119publ27/html/PLAW-119publ27.htm)),
+  and this token is not obviously such a deposit. The FDIC's April 2026
+  tokenized-deposit proposal asks whether a token that *represents* a claim on
+  a deposit, rather than being the deposit, could be a stablecoin instead. So
+  it is open whether the token falls outside the stablecoin definition or its
+  issuer must be a permitted payment-stablecoin issuer. That needs a legal
+  opinion before any pilot.
